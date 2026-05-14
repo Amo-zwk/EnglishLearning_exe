@@ -1,0 +1,297 @@
+{
+  "tasks": [
+    {
+      "task": "Define Copy-Format Extraction Contract",
+      "description": "Define the normalized extraction contract for copy-format phrase pairs parsed from AI responses.",
+      "steps": [
+        {
+          "step": 1,
+          "description": "Define the request shape for one input word"
+        },
+        {
+          "step": 2,
+          "description": "Define the extracted output shape for copy-format phrase pairs"
+        },
+        {
+          "step": 3,
+          "description": "Define the parse rule for copy-format source markers"
+        },
+        {
+          "step": 4,
+          "description": "Define the empty-result rule for missing copy-format pairs"
+        },
+        {
+          "step": 5,
+          "description": "Define the front-key dedupe rule for English phrases"
+        }
+      ],
+      "acceptance-criteria": "The contract must represent one input word with a dynamic list of extracted copy-format phrase pairs. Each extracted phrase pair must contain one English front value and one Chinese back value sourced from the copy-format segment only. Words without valid copy-format pairs must produce an empty result set without placeholder cards. The parser must ignore non-copy-format explanation text when building Anki submission items. The dedupe key must use the English front value exactly as stored for Anki submission.",
+      "test-plan": {
+        "unit": [
+          "Given one AI response that contains two valid copy-format segments, extraction returns one result group with two phrase items and preserves the input word reference.",
+          "Given one AI response with a copy-format segment missing Chinese text, extraction rejects that segment and keeps other valid segments.",
+          "Given one AI response with explanation text but zero valid copy-format segments, extraction returns an empty phrase list for that input word.",
+          "Given one AI response with one explanation sentence and one valid copy-format segment, extraction includes only the copy-format phrase pair in the submission set.",
+          "Given duplicate English phrases that differ only by surrounding whitespace, the dedupe-key generator returns the same key for both inputs."
+        ],
+        "integration": [],
+        "e2e-manual": []
+      },
+      "depends-on": [],
+      "skills": [
+        "tdd-workflow",
+        "testing-safe-protocol"
+      ],
+      "complete": true
+    },
+    {
+      "task": "Add AI Generation And Extraction Orchestrator",
+      "description": "Create the service layer that calls the existing API and extracts normalized copy-format phrase groups.",
+      "steps": [
+        {
+          "step": 1,
+          "description": "Send one generation request for each submitted input word"
+        },
+        {
+          "step": 2,
+          "description": "Store the full AI response for grouped review display"
+        },
+        {
+          "step": 3,
+          "description": "Extract copy-format phrase pairs into the shared contract"
+        },
+        {
+          "step": 4,
+          "description": "Surface per-word failures with actionable status messages"
+        }
+      ],
+      "acceptance-criteria": "The orchestrator must accept multiple input words from one page action. The orchestrator must return one result group per input word in the original input order. Each result group must preserve the full AI response for reading and must also expose the extracted copy-format phrase pairs from Define Copy-Format Extraction Contract. The orchestrator should report generation failures per input word without blocking successful groups. Words that contain no valid copy-format phrase pairs must remain reviewable while exposing no Anki submission items.",
+      "test-plan": {
+        "unit": [
+          "Given mock API output for three input words, the orchestrator returns three grouped results in the same order as the submitted words.",
+          "Given mock API output with one malformed group, the orchestrator marks that input word as failed and still returns extracted phrase groups for the other words.",
+          "Given mock API output with dynamic copy-format counts, the orchestrator preserves each extracted phrase count exactly in the normalized result groups.",
+          "Given mock API output with full explanation text and one copy-format segment, the orchestrator preserves the explanation text for display and exposes only the extracted copy-format pair for submission."
+        ],
+        "integration": [
+          "When connected to the real extraction layer from Define Copy-Format Extraction Contract, raw API responses are converted into valid copy-format phrase groups without manual reshaping.",
+          "When connected to the real API endpoint, one failed request produces an error state only for the affected input word and leaves successful input words available for review."
+        ],
+        "e2e-manual": []
+      },
+      "depends-on": [
+        "Define Copy-Format Extraction Contract"
+      ],
+      "skills": [
+        "tdd-workflow",
+        "testing-safe-protocol",
+        "verification-before-completion"
+      ],
+      "complete": true
+    },
+    {
+      "task": "Add AnkiConnect Submission Gateway",
+      "description": "Create the Anki integration layer for deck selection, phrase dedupe, and Basic note creation.",
+      "steps": [
+        {
+          "step": 1,
+          "description": "Fetch available deck names from AnkiConnect"
+        },
+        {
+          "step": 2,
+          "description": "Check existing notes by English front value"
+        },
+        {
+          "step": 3,
+          "description": "Create Basic notes for non-duplicate phrase pairs"
+        },
+        {
+          "step": 4,
+          "description": "Return submitted counts with skipped duplicate counts"
+        }
+      ],
+      "acceptance-criteria": "The gateway must read deck names from the user's local Anki instance through AnkiConnect. The gateway must require the user to choose a target deck before note creation. The gateway must use Anki's Basic note type with Front mapped to the English phrase and Back mapped to the Chinese meaning. The gateway must skip phrase pairs whose English front value already exists in Anki and must report submitted, skipped, and failed counts separately.",
+      "test-plan": {
+        "unit": [
+          "Given mock deck data from AnkiConnect, the gateway returns a selectable deck list without altering deck names.",
+          "Given mock duplicate search results for one English phrase, the submission planner marks that phrase as skipped before note creation.",
+          "Given mock submission input with two unique phrase pairs, the note payload builder creates two Basic notes with Front set to English text and Back set to Chinese text."
+        ],
+        "integration": [
+          "When connected to the real extraction contract from Define Copy-Format Extraction Contract, the gateway receives phrase pairs in the expected shape and produces valid Anki note payloads.",
+          "When connected to a real AnkiConnect instance, deck retrieval returns the same deck names shown in the Anki client.",
+          "When connected to a real AnkiConnect instance with an existing Front value, submission skips the duplicate phrase and reports it as skipped instead of added."
+        ],
+        "e2e-manual": []
+      },
+      "depends-on": [
+        "Define Copy-Format Extraction Contract"
+      ],
+      "skills": [
+        "tdd-workflow",
+        "testing-safe-protocol",
+        "verification-before-completion"
+      ],
+      "complete": true
+    },
+    {
+      "task": "Build Multi-Input Review Workspace",
+      "description": "Build the personal web interface for multi-word input, full-response review, extracted pair review, inline edits, and deck selection.",
+      "steps": [
+        {
+          "step": 1,
+          "description": "Render a workspace that supports multiple input blocks"
+        },
+        {
+          "step": 2,
+          "description": "Trigger generation only after an explicit button click"
+        },
+        {
+          "step": 3,
+          "description": "Render one grouped result card for each input word"
+        },
+        {
+          "step": 4,
+          "description": "Render the full AI response inside each grouped result card"
+        },
+        {
+          "step": 5,
+          "description": "Render a dedicated copy-format review area for extracted pairs"
+        },
+        {
+          "step": 6,
+          "description": "Enable inline editing for each English phrase"
+        },
+        {
+          "step": 7,
+          "description": "Enable inline editing for each Chinese meaning"
+        },
+        {
+          "step": 8,
+          "description": "Expose deck selection before Anki submission"
+        }
+      ],
+      "acceptance-criteria": "The workspace must allow multiple input blocks on one page so the user can prepare several words before generation. The generate action must run only after an explicit user click. The UI must render one grouped result card per input word and must show the full AI response for reading inside that group. The UI must also render a dedicated review area that contains only extracted copy-format phrase pairs available for submission. The extracted review area must show a dynamic number of phrase boxes inside each group. Each phrase box should resize to fit its content without truncating normal phrase lengths. The user must be able to edit extracted English phrases and Chinese meanings before submission. The user must be able to select a target Anki deck before starting submission.",
+      "test-plan": {
+        "unit": [
+          "Given mock result data for two input words, the workspace renders two grouped result cards with the correct source word labels.",
+          "Given mock result data with one full AI response and four extracted phrase pairs in one group, the workspace renders the full response view and four editable phrase boxes inside the extracted review area.",
+          "Given mock phrase text edits, the workspace state updates only the edited extracted phrase item and leaves sibling phrase items unchanged.",
+          "Given mock UI input activity without a generate click, the workspace does not call the generation action."
+        ],
+        "integration": [
+          "When connected to the real Add AI Generation And Extraction Orchestrator, one generate click populates grouped result cards with full response text and extracted phrase counts that match each input word.",
+          "When connected to the real AnkiConnect Submission Gateway, the selected deck value is passed unchanged into the submission request."
+        ],
+        "e2e-manual": []
+      },
+      "depends-on": [
+        "Add AI Generation And Extraction Orchestrator",
+        "Add AnkiConnect Submission Gateway"
+      ],
+      "skills": [
+        "tdd-workflow",
+        "testing-safe-protocol"
+      ],
+      "complete": true
+    },
+    {
+      "task": "Compose End-To-End Phrase Card Flow",
+      "description": "Compose the full personal workflow from word entry through reviewed submission into Anki.",
+      "steps": [
+        {
+          "step": 1,
+          "description": "Connect the workspace submit action to the Anki gateway"
+        },
+        {
+          "step": 2,
+          "description": "Display per-group submission outcomes after each request"
+        },
+        {
+          "step": 3,
+          "description": "Preserve reviewed results during partial submission failures"
+        }
+      ],
+      "acceptance-criteria": "The composed flow must let the user enter multiple words, generate phrase groups, review edits, choose a deck, and submit selected phrase pairs without leaving the page. The flow must display submitted, skipped, and failed outcomes in a way the user can distinguish per request. The flow must preserve editable results when one group fails so the user can retry without regenerating unaffected groups. The flow should make duplicate skips visible before or during submission feedback.",
+      "test-plan": {
+        "unit": [
+          "Given mock submission results with added, skipped, and failed items, the outcome formatter displays each count in the correct status bucket.",
+          "Given a mock partial failure, the composed page state preserves previously reviewed phrase edits for unaffected groups."
+        ],
+        "integration": [
+          "When connected to the real Build Multi-Input Review Workspace and the real Add AnkiConnect Submission Gateway, a reviewed phrase group submits into the selected deck and returns visible status feedback.",
+          "When connected to the real Add AI Generation And Extraction Orchestrator, edited phrase text is the exact text passed into Anki submission rather than the original extracted value."
+        ],
+        "e2e-manual": [
+          "Open the page with a reachable AnkiConnect instance, generate phrases for multiple words, edit one phrase, choose a deck, submit, and confirm the added Basic cards appear in the selected Anki deck.",
+          "Generate a word that yields no usable phrases and confirm the page communicates the empty result clearly without creating a submission target.",
+          "Submit a set containing one known duplicate English phrase and confirm the UI reports the duplicate as skipped while still adding the remaining unique phrases."
+        ]
+      },
+      "depends-on": [
+        "Build Multi-Input Review Workspace"
+      ],
+      "skills": [
+        "tdd-workflow",
+        "testing-safe-protocol",
+        "verification-before-completion",
+        "interactive-test"
+      ],
+      "complete": true
+    },
+    {
+      "task": "Add Runnable HTML Web Entry",
+      "description": "Add a lightweight web server entrypoint that serves the HTML workspace and handles generation and submission actions.",
+      "steps": [
+        {
+          "step": 1,
+          "description": "Choose a minimal Python web framework entry strategy"
+        },
+        {
+          "step": 2,
+          "description": "Wire HTTP routes to the existing workspace controller"
+        },
+        {
+          "step": 3,
+          "description": "Serve one HTML page for input review and submission"
+        },
+        {
+          "step": 4,
+          "description": "Add a configurable adapter seam for the generation API"
+        },
+        {
+          "step": 5,
+          "description": "Document the launch command and required local services"
+        }
+      ],
+      "acceptance-criteria": "The project must expose a runnable local web entrypoint that starts an HTTP server and serves HTML in a browser. The HTML page must support multiple input blocks, explicit generation, full AI response display, extracted copy-format review, inline edits, deck selection, and submission through the existing workspace flow. The HTTP layer must reuse the existing Python orchestration and Anki gateway modules instead of duplicating business logic. The generation API connection should be configurable through a clear adapter or environment seam. The project must include concise run instructions that explain how to start the site and what local prerequisites must be available.",
+      "test-plan": {
+        "unit": [
+          "Given a mock workspace controller, the web entry route returns an HTML document that contains the review workspace root and the generate action control.",
+          "Given a mock generation adapter configuration, the app factory builds the web app with the configured generation callable without mutating workspace business logic.",
+          "Given a mock submission request payload, the route handler forwards deck selection and reviewed phrase edits into the existing workspace controller unchanged."
+        ],
+        "integration": [
+          "When connected to the real Build Multi-Input Review Workspace module, the HTTP layer returns HTML that includes full AI response content and extracted review content for generated words.",
+          "When connected to the real Add AI Generation And Extraction Orchestrator and the real Add AnkiConnect Submission Gateway boundaries, the web entrypoint can execute the full request cycle from generation to submission using the existing modules.",
+          "When started locally, the documented launch command serves the HTML page on an HTTP port without requiring manual code edits."
+        ],
+        "e2e-manual": [
+          "Start the local web server, open the page in a browser, enter multiple words, generate results, and confirm the page shows both the full AI response area and the extracted copy-format review area.",
+          "Edit one extracted phrase in the browser, choose a deck, submit, and confirm the page renders submitted, skipped, or failed feedback without navigating away.",
+          "Launch the server using only the documented instructions on a clean local shell session and confirm the app is reachable at the documented URL."
+        ]
+      },
+      "depends-on": [
+        "Compose End-To-End Phrase Card Flow"
+      ],
+      "skills": [
+        "tdd-workflow",
+        "testing-safe-protocol",
+        "verification-before-completion",
+        "setup-fresh-project"
+      ],
+      "complete": true
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+[project]
+name = "english-learning"
+version = "1.0.0"
+description = "Personal English phrase card workspace with Gemini generation and Anki submission"
+requires-python = ">=3.12"
+dependencies = [
+    "pywebview>=5.4",
+]
+
+[project.optional-dependencies]
+build = [
+    "pyinstaller>=6.12",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,4 @@
+{
+  "COPY_FORMAT_GENERATION_API_BASE_URL": "",
+  "COPY_FORMAT_GEMINI_MODEL": "gemini-2.5-pro"
+}

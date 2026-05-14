@@ -1,0 +1,19 @@
+Windows Git Bash quick commands:
+
+Use HTTPS clone:
+
+cd /d
+git clone https://github.com/Amo-zwk/EnglishLearning.git
+cd EnglishLearning
+git log --oneline -5
+
+If you prefer to keep your current ZIP directory and clone into a different folder:
+
+cd /d
+git clone https://github.com/Amo-zwk/EnglishLearning.git EnglishLearning-git
+cd EnglishLearning-git
+git log --oneline -5
+
+After that, future updates are just:
+
+git pull
